@@ -1,0 +1,40 @@
+
+Notes: Some instructions are default in feature so we are not making seperate configutaion.
+
+1.By default the chart will create Volume Claims with the expectation that a dynamic provisioner will create the underlying Persistent Volumes
+2.By default this chart provides an in-cluster PostgreSQL database, for trial purposes only. But we can  have an external postgres database ready
+3.By default, the chart relies on Kubernetes Service objects of type: LoadBalancer to expose GitLab services using name-based virtual servers configured withIngress objects
+4.Helm consists of two parts, the helm (client) installed locally, and tiller (server) installed inside Kubernetes. Tiller is deployed into the cluster and interacts with the Kubernetes API to deploy your applications
+
+Helm Installation:
+
+curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 > get_helm.sh
+chmod 700 get_helm.sh
+./get_helm.sh
+
+Some required secret creation:
+
+kubectl create secret generic tonic-gitlab-initial-root-password --from-literal=password=$(head -c 512 /dev/urandom | LC_CTYPE=C tr -cd 'a-zA-Z0-9' | head -c 32)
+
+kubectl create secret generic gitlab-postgresql-password --from-literal=postgres-password=$(head -c 512 /dev/urandom | LC_CTYPE=C tr -cd 'a-zA-Z0-9' | head -c 64)
+
+Deployment using Helm:
+
+Once you have all of your configuration options collected, we can get any dependencies and run Helm.
+
+helm repo add gitlab https://charts.gitlab.io/
+helm repo update
+helm upgrade --install gitlab gitlab/gitlab \
+  --timeout 600 \
+  --set global.hosts.domain=mytonic.com \
+  --set global.hosts.externalIP=192.168.0.5 \
+  --set certmanager-issuer.email=me@mytonic.com
+  --set postgresql.install=false
+  --set global.psql.host=psql.mytonic
+  --set global.psql.password.secret=gitlab-postgresql-password
+  --set global.psql.password.key=postgres-pass word
+
+
+Initial login:
+
+kubectl get secret tonic-gitlab-initial-root-password -ojsonpath='{.data.password}' | base64 --decode ; echo
