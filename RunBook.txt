@@ -1,0 +1,41 @@
+####################################Runbook of setting up this architecture#####################
+
+>>Step1: Update the system and install pre-requisit pakages.
+yum update -y
+yum install gcc make kernel-devel -y
+
+>>Step2:  Vagrant and Virtual box Installation
+yum localinstall VirtualBox-6.1-6.1.0_135406_el7-1.x86_64.rpm 
+yum localinstall vagrant_2.2.6_x86_64.rpm
+/sbin/vboxconfig
+
+>>Step3: Validate the Installation
+
+vboxmanage --version
+vagrant --version
+vagrant box list
+
+
+3. Pros and Cons of your designed architecture
+4. Improvement areas
+
+>>Step4: Set the path for virtual box
+
+vboxmanage setproperty machinefolder /app_store/virtual_machines
+
+>>Step5: Make a directory for the required vox,than initialized the vangrant with base image name. 
+
+mkdir /app_store/hashicorp_bionic64
+vagrant init hashicorp/bionic64
+
+Step6: Modify the vagrantfile with below configuration
+
+Vagrant.configure("2") do |config|
+config.vm.box = "hashicorp/bionic64"
+#bootstrap file will install all dependencies, initialize the cluster and
+join worker node.
+config.vm.provision :shell, path: "bootstrap.sh"  
+end
+
+
+Step7: Use the below makefile to up/down the cluster
