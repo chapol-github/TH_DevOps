@@ -1,0 +1,87 @@
+Install the postgresql-server package:
+
+sudo yum install postgresql-server postgresql-contrib
+
+Create a new PostgreSQL database cluster:
+
+sudo postgresql-setup initdb
+
+By default, PostgreSQL does not allow password authentication. We will change that by editing its host-based authentication (HBA) configuration.
+
+
+sudo vi /var/lib/pgsql/data/pg_hba.conf
+
+Then replace “ident” with “md5”, so they look like this:
+
+Now start and enable PostgreSQL:
+
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
+
+Step 1:
+
+On db-master, open /etc/postgresql/10/main/postgresql.conf, the main server configuration file:
+
+sudo nano /etc/postgresql/10/main/postgresql.conf
+Find the following line:
+
+/etc/postgresql/10/main/postgresql.conf
+...
+#listen_addresses = 'localhost'         # what IP address(es) to listen on;
+...
+Uncomment it by removing the #, and add your db_master_private_ip_address to enable connections on the private network:
+
+/etc/postgresql/10/main/postgresql.conf
+...
+listen_addresses = 'localhost, db_master_private_ip_address'
+
+Next, find the following line:
+
+/etc/postgresql/10/main/postgresql.conf
+...
+#wal_level = replica                    # minimal, replica, or logical
+
+...
+wal_level = logical
+...
+
+/etc/postgresql/10/main/pg_hba.conf
+...
+# TYPE      DATABASE        USER            ADDRESS                               METHOD
+...
+host         all            all             db_replica_private_ip_address/32      md5
+
+Next, let’s set our firewall rules to allow traffic from db-replica to port 5432 on db-master:
+
+sudo ufw allow from db_replica_private_ip_address to any port 5432
+
+Finally, restart the PostgreSQL server for the changes to take effect:
+
+sudo systemctl restart postgresql 
+
+
+CREATE ROLE test WITH REPLICATION LOGIN PASSWORD 'my_password';
+GRANT ALL PRIVILEGES ON DATABASE example TO test;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO test;
+
+Step 3 — Setting Up a Publication
+
+On db-master, create a publication called my_publication:
+
+CREATE PUBLICATION my_publication;
+ALTER PUBLICATION my_publication ADD TABLE widgets;
+
+
+Step 4 — Creating a Subscription
+
+CREATE SUBSCRIPTION my_subscription CONNECTION 'host=db_master_private_ip_address port=5432 password=my_password user=sammy dbname=example' PUBLICATION my_publication;
+
+Step 5 — Testing and Troubleshooting
+On db-master, insert the following data on the widgets table:
+
+INSERT INTO playground (type, color, location, install_date) VALUES ('swing', 'yellow', 'northwest', '2010-08-16');
+
+On db-replica, run the following query to fetch all the entries on this table:
+
+SELECT * FROM playground ;
+
