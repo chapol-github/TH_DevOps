@@ -1,1 +1,1 @@
-# Telenor_Health_DevOps
+# TH_DevOps
